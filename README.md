@@ -3,7 +3,9 @@ This provides text (to stdout) and GUI data collection from a Shunda Tec-06 batt
 
 Note that it relies on a non-standard high-speed serial interface, so far the only device that I've found that supports this is a genuine (not a counterfeit) FTDI FT232.
 
-If the program is built as a console program (e.g. using the included makefile) or the GUI variant is invoked with a port on the commandline (e.g. /dev/ttyUSB0) then it provides text output which can be redirected to a file. If it is run as a GUI application (no commandline parameter) then it provides graphical output but has no provision to save either a graph or captured text to a file.
+If it is built as a console program (e.g. using the included makefile) or the GUI variant is invoked with a port on the commandline (e.g. /dev/ttyUSB0) then it provides text output which can be redirected to a file. If it is run as a GUI application (no commandline parameter) then it provides graphical output but has no provision to save either a graph or captured text to a file.
+
+Overall layout has been heavily influenced by the appearance of the original Chinese-language program, but as yet there is very limited backend functionality.
 
 ![Screenshot](tec06/tec-06.png)
 
