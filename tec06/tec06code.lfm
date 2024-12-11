@@ -1,0 +1,373 @@
+object Tec06Form: TTec06Form
+  Left = 128
+  Height = 533
+  Top = 128
+  Width = 711
+  Caption = 'Tec06 Battery Tester'
+  ClientHeight = 504
+  ClientWidth = 711
+  Menu = MainMenu1
+  OnCloseQuery = FormCloseQuery
+  OnCreate = FormCreate
+  LCLVersion = '2.2.6.0'
+  object ToolBar1: TToolBar
+    Left = 0
+    Height = 29
+    Top = 0
+    Width = 711
+    BorderWidth = 2
+    Caption = 'ToolBar1'
+    Images = ImageListButtons
+    TabOrder = 0
+    object ToolButtonSearch: TToolButton
+      Left = 1
+      Top = 2
+      Caption = 'Search'
+      ImageIndex = 0
+      OnClick = ToolButtonSearchClick
+    end
+    object ToolButtonSave: TToolButton
+      Left = 24
+      Top = 2
+      Caption = 'Save'
+      ImageIndex = 1
+      OnClick = ToolButtonSaveClick
+    end
+    object ToolButtonQuit: TToolButton
+      Left = 47
+      Top = 2
+      Caption = 'Quit'
+      ImageIndex = 2
+      OnClick = ToolButtonQuitClick
+    end
+  end
+  object GroupBoxTrend: TGroupBox
+    AnchorSideLeft.Control = Owner
+    AnchorSideTop.Control = GroupBoxNow
+    AnchorSideRight.Control = GroupBoxNow
+    AnchorSideBottom.Control = GroupBoxConnection
+    AnchorSideBottom.Side = asrBottom
+    Left = 8
+    Height = 471
+    Top = 29
+    Width = 483
+    Anchors = [akTop, akLeft, akRight, akBottom]
+    BorderSpacing.Left = 8
+    Caption = 'Trend'
+    ClientHeight = 451
+    ClientWidth = 481
+    TabOrder = 1
+    object Chart1: TChart
+      Left = 0
+      Height = 451
+      Top = 0
+      Width = 481
+      AxisList = <      
+        item
+          Grid.Style = psDashDotDot
+          Marks.LabelBrush.Style = bsClear
+          Minors = <>
+          Range.Max = 4.5
+          Range.UseMax = True
+          Range.UseMin = True
+          Title.Visible = True
+          Title.Caption = 'V'
+          Title.LabelBrush.Style = bsClear
+          Transformations = ChartAxisTransformationsLeft
+        end      
+        item
+          Alignment = calBottom
+          Marks.LabelBrush.Style = bsClear
+          Minors = <>
+          Range.Max = 60
+          Range.UseMax = True
+          Range.UseMin = True
+          Title.Visible = True
+          Title.Caption = 'Mins'
+          Title.LabelBrush.Style = bsClear
+        end      
+        item
+          Alignment = calRight
+          Marks.LabelBrush.Style = bsClear
+          Minors = <>
+          Range.Max = 1
+          Range.UseMax = True
+          Range.UseMin = True
+          Title.Visible = True
+          Title.Caption = 'A'
+          Title.LabelBrush.Style = bsClear
+          Transformations = ChartAxisTransformationsRight
+        end>
+      Legend.Alignment = laTopCenter
+      Legend.ColumnCount = 2
+      Legend.Visible = True
+      Title.Text.Strings = (
+        'TAChart'
+      )
+      Align = alClient
+      Color = clDefault
+      object Chart1LineSeriesVolts: TLineSeries
+        Title = 'Voltage (V)'
+        AxisIndexX = 1
+        AxisIndexY = 0
+        LinePen.Color = clRed
+        LinePen.Width = 2
+      end
+      object Chart1LineSeriesAmps: TLineSeries
+        Title = 'Current (A)'
+        AxisIndexX = 1
+        AxisIndexY = 2
+        LinePen.Color = clGreen
+        LinePen.Width = 2
+      end
+    end
+  end
+  object GroupBoxNow: TGroupBox
+    AnchorSideTop.Control = ToolBar1
+    AnchorSideTop.Side = asrBottom
+    AnchorSideRight.Control = Owner
+    AnchorSideRight.Side = asrBottom
+    AnchorSideBottom.Control = Owner
+    AnchorSideBottom.Side = asrBottom
+    Left = 495
+    Height = 312
+    Top = 29
+    Width = 208
+    Anchors = [akTop, akRight]
+    BorderSpacing.Left = 4
+    BorderSpacing.Right = 8
+    BorderSpacing.Bottom = 8
+    Caption = 'Now'
+    ClientHeight = 292
+    ClientWidth = 206
+    TabOrder = 2
+    object StringGrid1: TStringGrid
+      AnchorSideLeft.Control = Label1
+      AnchorSideTop.Control = GroupBoxNow
+      AnchorSideRight.Control = Label1
+      AnchorSideRight.Side = asrBottom
+      AnchorSideBottom.Control = Label1
+      Left = 4
+      Height = 253
+      Top = 4
+      Width = 198
+      Anchors = [akTop, akLeft, akRight, akBottom]
+      BorderSpacing.Top = 4
+      BorderSpacing.Bottom = 4
+      ColCount = 3
+      DefaultColWidth = 60
+      DefaultRowHeight = 40
+      FixedCols = 3
+      FixedRows = 6
+      Font.Height = -13
+      Font.Name = 'Sans'
+      ParentFont = False
+      RowCount = 6
+      ScrollBars = ssNone
+      TabOrder = 0
+      OnResize = StringGrid1Resize
+      Cells = (
+        12
+        0
+        0
+        'Current'
+        0
+        1
+        'Voltage'
+        0
+        2
+        'Termination'
+        0
+        3
+        'Capacity'
+        0
+        4
+        'Resistance'
+        0
+        5
+        'Temperature'
+        2
+        0
+        'A'
+        2
+        1
+        'V'
+        2
+        2
+        'Vt'
+        2
+        3
+        'mAH'
+        2
+        4
+        'Ω'
+        2
+        5
+        '°C'
+      )
+    end
+    object Label1: TLabel
+      AnchorSideLeft.Control = GroupBoxNow
+      AnchorSideRight.Control = GroupBoxNow
+      AnchorSideRight.Side = asrBottom
+      AnchorSideBottom.Control = GroupBoxNow
+      AnchorSideBottom.Side = asrBottom
+      Left = 4
+      Height = 27
+      Top = 261
+      Width = 198
+      Alignment = taCenter
+      Anchors = [akLeft, akRight, akBottom]
+      BorderSpacing.Left = 4
+      BorderSpacing.Right = 4
+      BorderSpacing.Bottom = 4
+      Caption = 'Disconnected'
+      Color = clForm
+      Font.Color = clBlack
+      Font.Height = -19
+      ParentColor = False
+      ParentFont = False
+      Transparent = False
+    end
+  end
+  object GroupBoxConnection: TGroupBox
+    AnchorSideLeft.Control = GroupBoxNow
+    AnchorSideTop.Control = GroupBoxNow
+    AnchorSideTop.Side = asrBottom
+    AnchorSideRight.Control = GroupBoxNow
+    AnchorSideRight.Side = asrBottom
+    AnchorSideBottom.Control = Owner
+    AnchorSideBottom.Side = asrBottom
+    Left = 495
+    Height = 151
+    Top = 349
+    Width = 208
+    Anchors = [akTop, akLeft, akRight, akBottom]
+    BorderSpacing.Top = 4
+    BorderSpacing.Bottom = 4
+    Caption = 'Connection'
+    ClientHeight = 131
+    ClientWidth = 206
+    TabOrder = 3
+    object ComboBox1: TComboBox
+      AnchorSideLeft.Control = GroupBoxConnection
+      AnchorSideTop.Control = GroupBoxConnection
+      AnchorSideRight.Control = GroupBoxConnection
+      AnchorSideRight.Side = asrBottom
+      Left = 4
+      Height = 31
+      Top = 4
+      Width = 198
+      Anchors = [akTop, akLeft, akRight]
+      BorderSpacing.Left = 4
+      BorderSpacing.Top = 4
+      BorderSpacing.Right = 4
+      ItemHeight = 0
+      TabOrder = 0
+      Text = 'ComboBox1'
+    end
+    object ButtonConnect: TButton
+      AnchorSideLeft.Control = ComboBox1
+      AnchorSideTop.Control = ComboBox1
+      AnchorSideTop.Side = asrBottom
+      AnchorSideRight.Control = ComboBox1
+      AnchorSideRight.Side = asrBottom
+      AnchorSideBottom.Control = GroupBoxConnection
+      AnchorSideBottom.Side = asrBottom
+      Left = 28
+      Height = 41
+      Top = 39
+      Width = 150
+      Anchors = [akTop, akLeft, akRight]
+      BorderSpacing.Left = 24
+      BorderSpacing.Top = 4
+      BorderSpacing.Right = 24
+      BorderSpacing.Bottom = 4
+      Caption = 'Connect'
+      OnClick = ButtonConnectClick
+      TabOrder = 1
+    end
+    object Label2: TLabel
+      AnchorSideLeft.Control = GroupBoxConnection
+      AnchorSideRight.Control = GroupBoxConnection
+      AnchorSideRight.Side = asrBottom
+      AnchorSideBottom.Control = GroupBoxConnection
+      AnchorSideBottom.Side = asrBottom
+      Left = 4
+      Height = 27
+      Top = 96
+      Width = 198
+      Alignment = taCenter
+      Anchors = [akLeft, akRight, akBottom]
+      BorderSpacing.Left = 4
+      BorderSpacing.Right = 4
+      BorderSpacing.Bottom = 8
+      Caption = '0:00:00'
+      Font.Height = -19
+      Font.Name = 'Sans'
+      ParentColor = False
+      ParentFont = False
+    end
+  end
+  object MainMenu1: TMainMenu
+    Left = 672
+    object MenuItemTool: TMenuItem
+      Caption = 'Tool'
+    end
+    object MenuItemSetting: TMenuItem
+      Caption = 'Setting'
+      object MenuItemGraphScaling: TMenuItem
+        Caption = 'Graph scaling'
+        OnClick = MenuItemGraphScalingClick
+      end
+    end
+    object MenuItemHelp: TMenuItem
+      Caption = 'Help'
+      object MenuItemHelpAbout: TMenuItem
+        Caption = 'About'
+        OnClick = MenuItemHelpAboutClick
+      end
+    end
+  end
+  object ImageListButtons: TImageList
+    Left = 632
+    Bitmap = {
+      4C7A030000001000000010000000100300000000000078DAC5954F4C135110C6
+      B72D6DB7DDED96506ABBDB76B774232A0721261AAF70F1A2442FDE3D68E24189
+      0663E0E09F202A07BD1939128178F4C48568F4A2C68B04E38518638C8698A804
+      82A02D58FCA69DC2A6EE6E69D538C92F7D7DF3BE79F366DEEE0AC2A6B580EB60
+      0EAC8125300D7A85DAB617CC830DB00A66C05BFE4F8C019F83B685B545300424
+      8BAF8B63518C6107FD30FBAFB9C4FF00F240B5F1CF71CE92CBF9FA798F5336BE
+      35CED1CDBA593F62E35BE25AB9D951D65FB2F14DB3AFCB453FCE6B7A6C7CBDEC
+      9BE15A55DB71EECD2CF038C41FE3181FB956DD9CF3386BC97701C80E7A1FF731
+      6FB9331566594BE3E7407139A7CA3D1AE15AF570CEB4EF334B8CA850BF45C053
+      8EF1E23FC6503846C1A19FDBCDA35BF87B36E9F178F2A0500BAC7D07F65BC5A4
+      E53E5FC57803D03375D1869BF0D17D5A04072C7A8A3B48F797F5AB4E89C2B740
+      6B307C6FA36F66FD8A8BFE2BAF29D8E8C98E8143B5F6B7D1BF04E7C1391786E8
+      FC767A9EAB87EDE8E9ACAB8DE8A997FCECD17D7D52A77E1DD37E3005CE82230D
+      ECDFCEEFB60EAA5D03FA37E034B8EC5003AB3EDF40FDF38D3C3F0C6927847F68
+      1149E9CCEAE6BCAE9B8FBDB07AF5F178F244D630378890188AFE893E2C869B6B
+      ADF7F97C2268AAA50FF80331BBEF585ACBDCD1D4CC6DD4D6EBA40F068301436F
+      9B8DB726FAAD5A59560E62DD3A580E85C23B9DF43BE289C3F85FA4B9A8D4BCAF
+      AC6E12D2A9B68734974CA803D8DF357F4D4DDF2DCFE7A6CA39855A0DDDFC4C73
+      52584AD73ABF24457673AE3FC580288B41B103E315C4FBE2DCBF7074EBAE7B05
+      43CF2DD03CB426D885F137CC2DFBFDFE4D3DEA903332B947292D336ABD3EE891
+      176B57589F154551C1F853297F496EAF7A57FAAA7B2585E54ECA1D318AC1A028
+      967A97D227499F5233A39E4A011D4CD332F74AE7CA9A135B31A5B481DE515D10
+      6300F9DAC650D5541FED4D7A598EECB1FA92096DB0522FF4E881A22889ADFB11
+      4D65F5DCFD8A1677E8CAEFDF05AF2716CB9D81BFC07168ED2253D2E1792CC662
+      F1934EF995EF83682493DA0DC3C8BD468DBEE36EFCC0EFAB4442BD150E4966F5
+      FA5F9C984F75
+    }
+  end
+  object ChartAxisTransformationsLeft: TChartAxisTransformations
+    Left = 597
+    object ChartAxisTransformationsLeftAutoScaleAxisTransformLeft: TAutoScaleAxisTransform
+    end
+  end
+  object ChartAxisTransformationsRight: TChartAxisTransformations
+    Left = 566
+    object ChartAxisTransformationsRightAutoScaleAxisTransformRight: TAutoScaleAxisTransform
+    end
+  end
+end

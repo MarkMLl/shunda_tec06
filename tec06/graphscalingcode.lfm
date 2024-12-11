@@ -1,0 +1,153 @@
+object FormGraphScaling: TFormGraphScaling
+  Left = 512
+  Height = 240
+  Top = 512
+  Width = 320
+  BorderIcons = []
+  Caption = 'Graph Scaling'
+  ClientHeight = 240
+  ClientWidth = 320
+  LCLVersion = '2.2.6.0'
+  object Label1: TLabel
+    AnchorSideLeft.Control = Owner
+    AnchorSideTop.Control = Owner
+    Left = 8
+    Height = 19
+    Top = 48
+    Width = 62
+    BorderSpacing.Left = 8
+    BorderSpacing.Top = 48
+    Caption = 'Voltage, V'
+    ParentColor = False
+    OnClick = Label1Click
+  end
+  object Label2: TLabel
+    AnchorSideLeft.Control = Label1
+    AnchorSideTop.Control = Label1
+    AnchorSideTop.Side = asrBottom
+    Left = 8
+    Height = 19
+    Top = 99
+    Width = 64
+    BorderSpacing.Top = 32
+    Caption = 'Current, A'
+    ParentColor = False
+  end
+  object Label3: TLabel
+    AnchorSideLeft.Control = Label1
+    AnchorSideTop.Control = Label2
+    AnchorSideTop.Side = asrBottom
+    Left = 8
+    Height = 19
+    Top = 151
+    Width = 66
+    BorderSpacing.Top = 33
+    Caption = 'Time, mins'
+    ParentColor = False
+  end
+  object ButtonCancel: TButton
+    Left = 80
+    Height = 32
+    Top = 192
+    Width = 75
+    Caption = 'Cancel'
+    ModalResult = 2
+    TabOrder = 0
+  end
+  object ButtonOK: TButton
+    Left = 208
+    Height = 32
+    Top = 192
+    Width = 75
+    Caption = 'OK'
+    ModalResult = 1
+    TabOrder = 1
+  end
+  object Label4: TLabel
+    AnchorSideLeft.Side = asrCenter
+    Left = 147
+    Height = 17
+    Top = 14
+    Width = 23
+    Anchors = [akTop, akLeft, akBottom]
+    BorderSpacing.Bottom = 11
+    Caption = 'Min'
+    ParentColor = False
+  end
+  object Label5: TLabel
+    AnchorSideLeft.Side = asrCenter
+    AnchorSideTop.Control = Label4
+    AnchorSideTop.Side = asrCenter
+    Left = 258
+    Height = 19
+    Top = 13
+    Width = 26
+    Caption = 'Max'
+    ParentColor = False
+  end
+  object MaskEdit1: TFloatSpinEdit
+    AnchorSideLeft.Control = Label1
+    AnchorSideLeft.Side = asrBottom
+    AnchorSideTop.Control = Label1
+    AnchorSideTop.Side = asrCenter
+    Left = 118
+    Height = 29
+    Top = 43
+    Width = 80
+    BorderSpacing.Left = 48
+    MaxValue = 15
+    TabOrder = 2
+  end
+  object MaskEdit2: TFloatSpinEdit
+    AnchorSideRight.Control = Owner
+    AnchorSideRight.Side = asrBottom
+    Left = 230
+    Height = 29
+    Top = 42
+    Width = 82
+    Anchors = [akTop, akLeft, akRight]
+    BorderSpacing.Right = 8
+    MaxValue = 15
+    TabOrder = 3
+  end
+  object MaskEdit3: TFloatSpinEdit
+    AnchorSideTop.Control = Label2
+    AnchorSideTop.Side = asrCenter
+    Left = 118
+    Height = 29
+    Top = 94
+    Width = 80
+    MaxValue = 5
+    TabOrder = 4
+  end
+  object MaskEdit4: TFloatSpinEdit
+    AnchorSideTop.Side = asrCenter
+    AnchorSideRight.Side = asrBottom
+    Left = 230
+    Height = 29
+    Top = 93
+    Width = 82
+    Anchors = [akTop, akLeft, akRight]
+    MaxValue = 5
+    TabOrder = 5
+  end
+  object MaskEdit5: TSpinEdit
+    AnchorSideTop.Control = Label3
+    AnchorSideTop.Side = asrCenter
+    Left = 118
+    Height = 29
+    Top = 146
+    Width = 80
+    TabOrder = 6
+  end
+  object MaskEdit6: TSpinEdit
+    AnchorSideTop.Side = asrCenter
+    AnchorSideRight.Side = asrBottom
+    Left = 230
+    Height = 29
+    Top = 144
+    Width = 82
+    Anchors = [akTop, akLeft, akRight]
+    TabOrder = 7
+  end
+end
