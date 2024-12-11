@@ -5,6 +5,6 @@ Note that it relies on a non-standard high-speed serial interface, so far the on
 
 If the program is built as a console program (e.g. using the included makefile) or the GUI variant is invoked with a port on the commandline (e.g. /dev/ttyUSB0) then it provides text output which can be redirected to a file. If it is run as a GUI application (no commandline parameter) then it provides graphical output but has no provision to save either a graph or captured text to a file.
 
-![Screenshot](tec-06.png)
+![Screenshot](tec06/tec-06.png)
 
 Unfortunately my unit has just died, which limits the likelihood of further work in the short or medium term.
