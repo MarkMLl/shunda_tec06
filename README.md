@@ -9,4 +9,4 @@ Overall layout has been heavily influenced by the appearance of the original Chi
 
 ![Screenshot](tec06/tec-06.png)
 
-Unfortunately my unit has just died, which limits the likelihood of further work in the short or medium term.
+Unfortunately my unit might be acting up, although I suspect that the cause might be as simple as an excessivley-long USB lead.
