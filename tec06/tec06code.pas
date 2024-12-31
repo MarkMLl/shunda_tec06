@@ -5,10 +5,11 @@ unit tec06code;
 (* This is a graphical wrapper for the code which reads a Shunda Tec-06 battery *)
 (* tester.                                                      MarkMLl         *)
 
-(* Icons for toolbar- such as it is- from https://www.iconfinder.com/icons/ To  *)
-(* be honest this looks pretty pointless, but I've added it for visual          *)
-(* consistency with the original program: see the Chinese-language manual at    *)
-(* https://github.com/Syonyk/TEC06                                              *)
+(* Icons for toolbar- such as it is- are from https://www.iconfinder.com/icons. *)
+(* The application icon is from https://iconscout.com/icons. To be honest the   *)
+(* toolbar looks pretty pointless, but I've added it for visual consistency     *)
+(* with the original program: refer to the (somewhat sketchy) Chinese-language  *)
+(* manual at https://github.com/Syonyk/TEC06.                                   *)
 
 {$mode objfpc}{$H+}
 
@@ -16,7 +17,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, Menus, ComCtrls,
-  StdCtrls, Grids, TAGraph, TASeries, TATransformations;
+  StdCtrls, Grids, ExtCtrls, TAGraph, TASeries, TATransformations;
 
 type
   String31= string[31];
@@ -36,6 +37,7 @@ type
     GroupBoxTrend: TGroupBox;
     GroupBoxNow: TGroupBox;
     GroupBoxConnection: TGroupBox;
+    IdleTimerScpi: TIdleTimer;
     ImageListButtons: TImageList;
     Label1: TLabel;
     Label2: TLabel;
@@ -52,6 +54,8 @@ type
     ToolButtonQuit: TToolButton;
     procedure ButtonConnectClick(Sender: TObject);
     procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
+    procedure IdleTimerScpiTimer(Sender: TObject);
+    procedure MenuItemGraphScalingClear(Sender: TObject);
     procedure MenuItemGraphScalingClick(Sender: TObject);
     procedure MenuItemHelpAboutClick(Sender: TObject);
     procedure OnAfterShow(afterShowParam: PtrInt);
@@ -158,6 +162,8 @@ const
   clDarkOrange= $008CFF;                (* From turbopower_ipro/ipcss.inc       *)
   clOrange= $00A5FF;
   clOrangeRed= $0045FF;
+  clLowSatRed= $008080ff;
+  clLowSatGreen= $0080ff80;
 
 var
   status: string;
@@ -199,8 +205,18 @@ begin
   otherwise
     Label1.Font.Color := clBlack
   end;
-  TLineSeries(Chart1.Series[0]).AddXY(mins, StrToFloat(StringGrid1.Cells[1, 1])); (* Volts, red *)
-  TLineSeries(Chart1.Series[1]).AddXY(mins, StrToFloat(StringGrid1.Cells[1, 0]))  (* Amps, green *)
+
+// This would probably be a good place to consider rescaling the graph to keep
+// the voltage and current lines somewhat below the maximum, provided that the
+// user hasn't _overridden_ this manually.
+
+  if Label1.Font.Color = clAmber then begin
+    TLineSeries(Chart1.Series[0]).AddXY(mins, StrToFloat(StringGrid1.Cells[1, 1]), '', clRed); (* Volts *)
+    TLineSeries(Chart1.Series[1]).AddXY(mins, StrToFloat(StringGrid1.Cells[1, 0]), '', clGreen)  (* Amps *)
+  end else begin
+    TLineSeries(Chart1.Series[0]).AddXY(mins, StrToFloat(StringGrid1.Cells[1, 1]), '', clLowSatRed); (* Volts *)
+    TLineSeries(Chart1.Series[1]).AddXY(mins, StrToFloat(StringGrid1.Cells[1, 0]), '', clLowSatGreen)  (* Amps *)
+  end
 end { TTec06Form.ReadingTxt } ;
 
 
@@ -267,7 +283,7 @@ end { TcommsThread.Execute } ;
 procedure TTec06Form.StringGrid1Resize(Sender: TObject);
 
 begin
-  StringGrid1.DefaultRowHeight := StringGrid1.Height div 6;
+//  StringGrid1.DefaultRowHeight := StringGrid1.Height div 6;
   StringGrid1.ColWidths[0] := Trunc(StringGrid1.Width * 7 / 16);
   StringGrid1.ColWidths[1] := Trunc(StringGrid1.Width * 6 / 16)
 end { TTec06Form.StringGrid1Resize } ;
@@ -312,8 +328,35 @@ end { TTec06Form.ToolButtonSearchClick };
 *)
 procedure TTec06Form.OnAfterShow(afterShowParam: PtrInt);
 
+var
+  exitCode: integer;
+
 begin
   Assert(afterShowParam = Tec06CodeMagicNumber, 'Internal error: TTec06Form bad magic number');
+
+(* This is probably the place to tweak the height of GroupBoxConnection so that *)
+(* the rows fill the stringgrid neatly. There is a list of known widgetset      *)
+(* names at the start of IniFilesAbout implementation part.                     *)
+
+  StringGrid1.DefaultRowHeight := StringGrid1.Height div StringGrid1.RowCount;
+  GroupBoxNow.ClientHeight := (StringGrid1.DefaultRowHeight * StringGrid1.RowCount) - StringGrid1.GridLineWidth +
+        StringGrid1.BorderSpacing.Top + StringGrid1.BorderSpacing.Bottom +
+        Label1.Height + GroupBoxNow.BorderSpacing.Top + GroupBoxNow.BorderSpacing.Bottom
+(*$IFDEF LCLGTK2 *)
+                                                                - 2
+(*$ENDIF         *)
+(*$IFDEF LCLQT5  *)
+(*$ENDIF         *)                                             ;
+
+(* Parse the commandline and optionally start an SCPI server.                   *)
+
+  exitCode := ParseParams();
+  if exitCode < 0 then
+    exitCode := ScpiStart();
+  if exitCode > 0 then begin
+    MessageDlgOpt('Commandline error ' + IntToStr(exitCode), mtError, [mbOK], 0);
+    Close
+  end;
 
 (* The only device that I've found that will run at the required non-standard   *)
 (* speed (124kBits/sec) is a genuine- /not/ a counterfeit- FTDI FT232, however  *)
@@ -337,6 +380,30 @@ begin
   temp:= 'Terminate ' + temp + '?';
   CanClose:= MessageDlgOpt(temp, mtWarning, [mbYes, mbNo], 0) = mrYes
 end { TTec06Form.FormCloseQuery } ;
+
+
+procedure TTec06Form.IdleTimerScpiTimer(Sender: TObject);
+
+begin
+  IdleTimerScpi.Enabled := false;
+  try
+    ScpiDispatch
+  finally
+    IdleTimerScpi.Enabled := true
+  end
+end { TTec06Form.IdleTimerScpiTimer } ;
+
+
+procedure TTec06Form.MenuItemGraphScalingClear(Sender: TObject);
+
+begin
+  Chart1.AxisList[0].Range.Min := 0.0;
+  Chart1.AxisList[0].Range.Max := 4.5;
+  Chart1.AxisList[1].Range.Min := 0;
+  Chart1.AxisList[1].Range.Max := 60;
+  Chart1.AxisList[2].Range.Min := 0;
+  Chart1.AxisList[2].Range.Max := 1.0
+end { TTec06Form.MenuItemGGraphScalingClear } ;
 
 
 procedure TTec06Form.MenuItemGraphScalingClick(Sender: TObject);
@@ -393,6 +460,14 @@ begin
       StringGrid1.Cells[1, 3] := '';
       StringGrid1.Cells[1, 4] := '';
       StringGrid1.Cells[1, 5] := '';
+
+// The graph probably shouldn't be reset to nominal scaling if the user has
+// _overridden_ this manually. If the user hasn't overridden it then the start
+// of a connected session, or a restart (Completed -> Stopped), should prime the
+// scaling to increase or decrease to keep the traces nicely visible, but after
+// the first data has been received it should only increase if necessary.
+
+//      MenuItemGraphScalingClear(sender);
       TLineSeries(Chart1.Series[0]).Clear;
       TLineSeries(Chart1.Series[1]).Clear;
       Label2.Caption := '0:00:00';
@@ -416,14 +491,6 @@ end { TTec06Form.ButtonConnectClick } ;
 procedure TTec06Form.FormCreate(Sender: TObject);
 
 begin
-
-// This is probably the place to tweak the height of GroupBoxConnection so that
-// the rows fill the stringgrid neatly, any attempt to do this after the message
-// loop is running risks going recursive. Below is a placeholder, there is a list
-// of known widgetset names at the start of IniFilesAbout implementation part.
-
-(*$IFDEF LCLGTK2 *)
-(*$ENDIF       *)
   Application.QueueAsyncCall(@OnAfterShow, Tec06CodeMagicNumber) (* Keep at end *)
 end { TTec06Form.FormCreate } ;
 

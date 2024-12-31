@@ -11,9 +11,13 @@
       <XPManifest>
         <DpiAware Value="True"/>
       </XPManifest>
+      <Icon Value="0"/>
     </General>
     <BuildModes>
       <Item Name="Default" Default="True"/>
+      <SharedMatrixOptions Count="1">
+        <Item1 ID="515384972070" Type="IDEMacro" MacroName="LCLWidgetType" Value="qt5"/>
+      </SharedMatrixOptions>
     </BuildModes>
     <PublishOptions>
       <Version Value="2"/>
@@ -63,7 +67,7 @@
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(LazarusDir)/ide;$(ProjOutDir)"/>
-      <OtherUnitFiles Value="../serialcomms;../inifiles;../scpisrv"/>
+      <OtherUnitFiles Value="../../serialcomms/trunk;../../inifiles/trunk;../../scpisrv/trunk"/>
       <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <Parsing>

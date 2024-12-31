@@ -42,6 +42,27 @@ procedure DoVersion(const projName: string);
 *)
 procedure DoHelp(const projName: string);
 
+(* Return true if there is no parameter. This includes the case where the
+  commandline ends with --, which under GNU conventions may be used to
+  terminate a sequence of options.
+*)
+function NoParams(): boolean;
+
+(* Parse the commandline. On error write a message to erroutput and return a
+  +ve integer to be used as the program's exitcode.
+*)
+function ParseParams(): integer;
+
+(* Start an SCPI server, on error write a message to erroutput and return an
+  exitcode > 0.
+*)
+function ScpiStart(): integer;
+
+(* This should be called periodically to process any SCPI requests, typically
+  by the main function inner loop.
+*)
+procedure ScpiDispatch;
+
 (* This is the inner loop of the main function. If the second parameter is nil
   then output each decoded line using WriteLn(), otherwise call the indicated
   writer procedure which will typically send the output to the GUI.
@@ -65,6 +86,7 @@ const
   ignoreSpeedError= true;
 
 var
+  actualPortName: string;
   scpiPort: integer= -2;
   scpi: TScpiServer= nil;
   scpiLock: TCriticalSection= nil;
@@ -112,6 +134,11 @@ begin
   WriteLn('                 digits after the decimal point. Alternatively use %x@yBzd or');
   WriteLn('                 %x@yLzd for offset x and y bytes of big/little-endian data');
   WriteLn('                 with C format %zd etc., @ by itself dumps raw data as read.');
+{$ifdef LCL }
+  WriteLn('                 This applies only to standard output, not the GUI or SCPI.');
+{$else      }
+  WriteLn('                 This applies only to standard output, i.e. not SCPI.');
+{$endif LCL }
   WriteLn();
   WriteLn('  --scpi [p]     Listen for SCPI commands on port p, or standard input.');
   WriteLn();
@@ -133,6 +160,27 @@ begin
   WriteLn('10  Unable to create or start SCPI server');
   WriteLn()
 end { DoHelp } ;
+
+
+(* Return true if there is no parameter. This includes the case where the
+  commandline ends with --, which under GNU conventions may be used to
+  terminate a sequence of options.
+*)
+function NoParams(): boolean;
+
+begin
+  result := false;
+  if ParamCount() = 0 then
+    result := true
+  else
+    if ParamStr(ParamCount()) = '-' then
+      result := true
+{$ifndef LCL }
+    else
+      if ParamStr(ParamCount()) = '--' then
+        result := true
+{$endif LCL  }
+end { NoParams } ;
 
 
 {$if not declared(SerialStruct) }
@@ -685,15 +733,100 @@ end { outputFormattedRescaled } ;
 function unpack(const message: Tmessage; var mA, mV, mVT: word; var mAH: cardinal;
                                         var r: word; var status: byte): boolean;
 
+const                                   (* Static variable for debugging        *)
+  lastMessage: Tmessage= (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+  count: qword= 0;                      (* Ditto                                *)
+
+
+  (* The result is in the range ±32k mA.
+  *)
+  function tomA(first, second: word): smallint;
+
+  begin
+    result := (((first << 8) + second) - 17) * 10
+  end { toma } ;
+
+
+  (* The result is in the range ±32k mV.
+  *)
+  function tomv(first, second: word): smallint;
+
+  begin
+    result := ((first << 8) + second) - $200
+  end { tomv } ;
+
+
+  (* The result is in the range ±32k mV.
+  *)
+  function tomvt(first, second: word): smallint;
+
+  begin
+    result := (first << 8) + second
+  end { tomvt } ;
+
+
+  (* The result is a +ve integer.
+  *)
+  function tomah(first, second, third: cardinal): cardinal;
+
+  begin
+    result := (first << 16) + (second << 8) + third
+  end { tomah } ;
+
+
+  (* The result is in the range ±32k mV.
+  *)
+  function tor(first, second: word): smallint;
+
+  begin
+    result := (first << 8) + second - 20
+  end { tor } ;
+
+
 begin
   result := (message[0] = $aa) and (message[1] = $6a) and (message[14] = $ac);
   if not result then
     exit;
-  mA := (((message[2] << 8) + message[3]) - 17) * 10;
-  mV := (message[4] << 8) + message[5] - $200;
-  mVT := (message[6] << 8) + message[7];
-  mAH := (message[8] << 16) + (message[9] << 8) + message[10];
-  r := (message[11] << 8) + message[12] - 20;
+
+(* I'm seeing a situation where a tester with firmware 6.34 suddenly decides to *)
+(* swap the first two fields from the message, i.e. instead of the first being  *)
+(* the configured test current and the second the measured voltage, the first   *)
+(* becomes the measured voltage and the second becomes the configured test      *)
+(* current.                                                                     *)
+(*                                                                              *)
+(* This appears to occur towards the end of a test run, but otherwise is        *)
+(* erratic and difficult to characterise. However if I'd written the firmware,  *)
+(* the place I'd be looking for this type of problem would be in a transition   *)
+(* from a constant-current to a constant-voltage test: I have no reason to      *)
+(* believe that such a facility exists but it's the sort of thing that might be *)
+(* in a product which shares heritage with a charger or with a tester which has *)
+(* an explicit discharge-then-charge cycle. Thus, the first field should be     *)
+(* interpreted as the test setting and the second field as the measured         *)
+(* voltage, and there should be a field indicating the operative mode.          *)
+(*                                                                              *)
+(* As a hack to try to accomodate this, I'm making the assumption that the test *)
+(* current in mA is unlikely to (numerically) exceed the termination voltage in *)
+(* mV (which by definition is less than the measured voltage during a test run) *)
+(* and that both the test current and measured voltage should be +ve under all  *)
+(* circumstances.                                                               *)
+
+{ TODO : Consider a "bad data point" status like running/stopped/completed. }
+// I.E. the data is ignored but operation continues.
+
+  mVT := tomvt(message[6], message[7]);
+  if toma(message[2], message[3]) <= mVT then begin     (* Normal case          *)
+    if (toma(message[2], message[3]) < 0) or (tomv(message[4], message[5]) < 0) then
+      exit(false);
+    mA := toma(message[2], message[3]);
+    mV := tomv(message[4], message[5])
+  end else begin                        (* Fields apparently swapped            *)
+    if (toma(message[4], message[5]) < 0) or (tomv(message[2], message[3]) < 0) then
+      exit(false);
+    mA := toma(message[4], message[5]);
+    mV := tomv(message[2], message[3])
+  end;
+  mAH := tomah(message[8], message[9], message[10]);
+  r := tor(message[11], message[12]);
   status := message[13];
 
 (* This lock isn't strictly necessary, since the main thread is being used to   *)
@@ -708,7 +841,9 @@ begin
     finally
       scpiLock.Leave
     end
-  end
+  end;
+  lastMessage := message;               (* For debugging                        *)
+  count += 1                            (* Ditto                                *)
 end { unpack } ;
 
 
@@ -835,6 +970,13 @@ var
   end { C } ;
 
 
+{ TODO : Completely redo state and timing. }
+// State must persist for >2 readings. Graph should carry on plotting so that
+// voltage recovery may be seen, changing e.g. the background colour to show
+// the duration of the actual test might be useful but otherwise AddXY() can
+// apparently take a 4th parameter for point/line colour (done but not well
+// tested).
+
 begin
   if message[0] <> $aa then
     exit('');                           (* Bad sync byte                        *)
@@ -855,6 +997,14 @@ begin
 (* If the state was completed and we move to running, assume that it's a start. *)
 
   if (lastStatus = 3) and (status = 1) then begin (* Completed -> running       *)
+    start := UTC_Now();
+    paused := 0.0
+  end;
+
+(* If the program has just been started and we're already running, start        *)
+(* anyway although in this case the timing will obviously be adrift.            *)
+
+  if (lastStatus = $ff) and (status = 1) then begin (* Uninitialised -> running *)
     start := UTC_Now();
     paused := 0.0
   end;
@@ -1057,12 +1207,12 @@ begin
 
       if pleaseStop then
         break;
-      if debugLevel > 1 then begin
+      if debugLevel > 2 then begin
         Write(ErrOutput, '#');
         for i := 0 to High(message) do
           Write(ErrOutput, ' ' + LowerCase(HexStr(message[i], 2)));
         WriteLn(ErrOutput);
-        Flush(ErrOutput)
+        Flush(ErrOutput)                (* Keep in step with output             *)
       end;
       if Assigned(writer) then begin
         scratch := autoFormatted(message, true);
@@ -1082,35 +1232,15 @@ begin
           scratch := autoFormatted(message, false);
           if scratch = '' then
             exit(5);                    (* Format error                         *)
-          WriteLn(scratch)
+          WriteLn(scratch);
+          if debugLevel > 2 then        (* Keep in step with erroutput          *)
+            Flush(output)
         end;
 
 (* Only output a single line if an SCPI server has been requested. Even this    *)
 (* might be excessive.                                                          *)
 
-      if Assigned(scpi) and not scpi.Finished then begin
-
-(* If Run() hasn't been called to activate the thread, which depends on the     *)
-(* thread manager being imported into the main unit at compilation, then it's   *)
-(* necessary to call Poll() regularly. Don't expect this to perform well.       *)
-
-        if scpi.Suspended then
-          scpi.Poll(NonBlocking);
-
-(* This lock isn't strictly necessary, since the main thread is being used to   *)
-(* both update the (global) variables showing the meter's state, and dispatch   *)
-(* SCPI sommands.                                                               *)
-
-        if scpi.CommandsAvailable() > 0 then begin
-          scpiLock.Enter;
-          try
-            while scpi.Dispatch() do
-              Sleep(10)
-          finally
-            scpiLock.Leave
-          end
-        end
-      end;
+      ScpiDispatch;
       if onceOnly then                  (* Debugging option, -ve level          *)
         break
     until pleaseStop { Dave }           (* Or signal from keyboard              *)
@@ -1121,7 +1251,7 @@ end { RunConsoleApp2 } ;
 
 
 {$macro on  }
-{$define IS_SCPI_SYNTAX__:= Pos(' SYNTAX', command) = Length(command) - Length(' SYNTAX') + 1 }
+{$define IS_SCPI_SYNTAX__:= (Pos(' SYNTAX', command) > 0) and (Pos(' SYNTAX', command) = Length(command) - Length(' SYNTAX') + 1) }
 {$define SCPI_COMMAND_NO_SYNTAX__:= Copy(command, 1, Length(command) - Length(' SYNTAX')) }
 {$define SYNTAX_REQUESTED_FOR__:= Copy(SCPI_COMMAND_NO_SYNTAX__, Pos(' ', SCPI_COMMAND_NO_SYNTAX__) + 1, MaxInt) }
 
@@ -1171,7 +1301,7 @@ begin
       scpi.Respond('  ', false);
     scpi.Respond(SCPI_COMMAND_NO_SYNTAX__, true)
   end else
-    scpi.Respond('Shunda,Tec-06')
+    scpi.Respond('Shunda,Tec-06', true)
 end { scpiDoIdentify } ;
 
 
@@ -1196,40 +1326,51 @@ end { scpiDoIdentify } ;
 (* earlier SYSTem:HELP:HEADers? command. Note the special cases here to handle  *)
 (* the HEADers and SYNTax commands themselves.                                  *)
 
-// https://koctas-img.mncdn.com/mp/pdf/5000818338/4acb9313c3954507b3f33b10fcd84ec3.pdf
 
-
-function scpiDoReportFetch(scpi: TScpiServer; const {%H-}command: AnsiString): boolean;
+function scpiDoReportInit(scpi: TScpiServer; const {%H-}command: AnsiString): boolean;
 
 begin
   result := true;
   if IS_SCPI_SYNTAX__ then begin
     if scpi.Prompt then
       scpi.Respond('  ', false);
-    scpi.Respond(SCPI_COMMAND_NO_SYNTAX__ + ' Report captured data.', true)
+    scpi.Respond(SCPI_COMMAND_NO_SYNTAX__ + ' Capture data in preparation for a fetch.', true)
+  end
+end { scpiDoReportInit } ;
+
+
+function scpiDoReportFetch(scpi: TScpiServer; const {%H-}command: AnsiString): boolean;
+
+// https://koctas-img.mncdn.com/mp/pdf/5000818338/4acb9313c3954507b3f33b10fcd84ec3.pdf
+
+begin
+  result := true;
+  if IS_SCPI_SYNTAX__ then begin
+    if scpi.Prompt then
+      scpi.Respond('  ', false);
+    scpi.Respond(SCPI_COMMAND_NO_SYNTAX__ + ' Report captured data (A, V, Vt, mAH, Ohms, status).', true)
   end else
     scpi.Respond(scpiFetch, true)
 end { scpiDoReportFetch } ;
 
 
-(* Main function, return 0 if no error.
+(* Parse the commandline. On error write a message to erroutput and return a
+  +ve integer to be used as the program's exitcode.
 *)
-function RunConsoleApp(portName: string): integer;
+function ParseParams(): integer;
 
 var
-  portHandle: TSerialHandle= InvalidSerialHandle;
-  dontStop: boolean= false;
   i: integer;
 
 begin
-  result := 3;                          (* Unresponsive is a good default       *)
+  result := -1;                         (* No error                             *)
   i := 1;
   while i <= ParamCount() do begin
     case ParamStr(i) of
       '-',                              (* Placeholder only                     *)
-      '--',                             (* This doesn't work with GUI/LCL       *)
+      '--': ;                           (* This doesn't work with GUI/LCL       *)
       '--debug':      if i = ParamCount() then begin
-                        WriteLn(stderr, 'Debug level has no parameter');
+                        WriteLn(erroutput, 'Debug level has no parameter');
                         exit(9)         (* Missing debug level                  *)
                       end else begin
                         i += 1;
@@ -1237,13 +1378,13 @@ begin
                           debugLevel := Abs(StrToInt(ParamStr(i)));
                           onceOnly := StrToInt(ParamStr(i)) < 0
                         except
-                          WriteLn(stderr, 'Debug level not numeric');
+                          WriteLn(erroutput, 'Debug level not numeric');
                           exit(9)       (* Bad debug level                      *)
                         end
                       end;
       '-F',
       '--format':     if i = ParamCount() then begin
-                        WriteLn(stderr, 'Format string has no parameter');
+                        WriteLn(erroutput, 'Format string has no parameter');
                         exit(9)         (* Missing format string                *)
                       end else begin
                         i += 1;
@@ -1261,58 +1402,59 @@ begin
                           else
                             if (not TryStrToInt(ParamStr(i), scpiPort)) or
                                         (scpiPort < 0) or (scpiPort > 65535) then begin
-                              WriteLn(stderr, 'Bad SCPI port number');
+                              WriteLn(erroutput, 'Bad SCPI port number');
                               exit(1)   (* Bad SCPI port                        *)
                             end
                       end
     otherwise
       if i <> ParamCount() then begin
-        WriteLn(stderr, 'Bad device name');
+        WriteLn(erroutput, 'Bad device name');
         exit(1)                         (* Bad device name                      *)
       end else
-        portName := ParamStr(i)
+        actualPortName := ParamStr(i)
     end;
     i += 1
-  end;
-  portHandle := SerOpenLocked(portName);
-  if portHandle = InvalidSerialHandle then begin
-    WriteLn(stderr, 'Device ' + portName + ' cannot be opened');
-    exit(2)                             (* Cannot be opened                     *)
-  end;
+  end
+end { ParseParams } ;
+
+
+(* Start an SCPI server, on error write a message to erroutput and return an
+  exitcode > 0.
+*)
+function ScpiStart(): integer;
+
+begin
   result := 0;
+  if scpiPort = -2 then                 (* Commandline was not parsed, no error *)
+    exit;
   if debugLevel > 0 then
-    WriteLn(ErrOutput, '# Using port ', portName);
-
-(* If requested, start an SCPI server.                                          *)
-
-  if scpiPort >= -1 then begin
-    if debugLevel > 0 then
-      if scpiPort = -1 then
-        WriteLn(stderr, '# Starting SCPI daemon on standard I/O')
-      else
-        WriteLn(stderr, '# Starting SCPI daemon on port ', scpiPort);
+    if scpiPort = -1 then
+      WriteLn(erroutput, '# Starting SCPI daemon on standard I/O')
+    else
+      WriteLn(erroutput, '# Starting SCPI daemon on port ', scpiPort);
 
 (* Even though we're not showing this host's IP addresses yet, we can usefully  *)
 (* display the port number early so that if the daemon can't be started we know *)
 (* the potential clash.                                                         *)
 
-    scpi := TScpiServer.Create(scpiPort);
-    if Assigned(scpi) then begin
-      if debugLevel > 0 then
-        if (scpiPort > -1) and (scpi.OwnAddr <> '') then
-          if Pos(' ', scpi.OwnAddr) > 0 then
-            WriteLn(StdErr, '# Listening on IP addresses ', scpi.OwnAddr)
-          else
-            WriteLn(StdErr, '# Listening on IP address ', scpi.OwnAddr);
-      scpiLock := TCriticalSection.Create;
-      scpi.BlankIsHelp := true;
-      scpi.HelpIsHelp := true;
-      scpi.HelpQIsHelp := true;
-      scpi.Register('', @scpiDoNothing); (* Default does nothing              *)
-      scpi.Register('*HALT', @scpiDoHalt);
-      scpi.Register('SYSTem:HELP:HEADers?', nil);
-      scpi.Register('*IDN', @scpiDoIdentify);
-      scpi.Register('FETCH?', @scpiDoReportFetch);
+  scpi := TScpiServer.Create(scpiPort);
+  if Assigned(scpi) then begin
+    if debugLevel > 0 then
+      if (scpiPort > -1) and (scpi.OwnAddr <> '') then
+        if Pos(' ', scpi.OwnAddr) > 0 then
+          WriteLn(erroutput, '# Listening on IP addresses ', scpi.OwnAddr)
+        else
+          WriteLn(erroutput, '# Listening on IP address ', scpi.OwnAddr);
+    scpiLock := TCriticalSection.Create;
+    scpi.BlankIsHelp := true;
+    scpi.HelpIsHelp := true;
+    scpi.HelpQIsHelp := true;
+    scpi.Register('', @scpiDoNothing);  (* Default does nothing                 *)
+    scpi.Register('SYSTem:HELP:HEADers?', nil); (* Help and syntax handler      *)
+    scpi.Register('*IDN', @scpiDoIdentify); (* This is mandatory                *)
+    scpi.Register('*HALT', @scpiDoHalt);
+    scpi.Register('INITiate', @scpiDoReportInit);
+    scpi.Register('FETCh?', @scpiDoReportFetch);
 
 (* As an alternative, we could use e.g.                                         *)
 (*                                                                              *)
@@ -1324,24 +1466,90 @@ begin
 (* thread manager being imported into the main unit at compilation, then it's   *)
 (* necessary to call Poll() regularly. Don't expect this to perform well.       *)
 
-      if not scpi.Run() then begin
-        result := 10;
-        if scpiPort < 0 then
-          WriteLn(stderr, 'Unable to run SCPI server on stdin')
-        else
-          WriteLn(stderr, 'Unable to run SCPI server on port ', scpiPort)
-      end
-    end else begin
+    if debugLevel > 2 then
+      with scpi.Dump() do begin
+        WriteLn(errOutput, Text);
+        Free
+      end;
+    if not scpi.Run() then begin
       result := 10;
-      WriteLn(stderr, 'Unable to create SCPI server')
+      if scpiPort < 0 then
+        WriteLn(erroutput, 'Unable to run SCPI server on stdin')
+      else
+        WriteLn(erroutput, 'Unable to run SCPI server on port ', scpiPort)
     end
+  end else begin
+    result := 10;
+    WriteLn(erroutput, 'Unable to create SCPI server')
+  end
+end { ScpiStart } ;
+
+
+(* This should be called periodically to process any SCPI requests, typically
+  by the main function inner loop.
+*)
+procedure ScpiDispatch;
+
+begin
+  if Assigned(scpi) and not scpi.Finished then begin
+
+(* If Run() hasn't been called to activate the thread, which depends on the     *)
+(* thread manager being imported into the main unit at compilation, then it's   *)
+(* necessary to call Poll() regularly. Don't expect this to perform well.       *)
+
+    if scpi.Suspended then
+      scpi.Poll(NonBlocking);
+
+(* This lock isn't strictly necessary, since the main thread is being used to   *)
+(* both update the (global) variables showing the meter's state, and dispatch   *)
+(* SCPI sommands.                                                               *)
+
+    if scpi.CommandsAvailable() > 0 then begin
+      scpiLock.Enter;
+      try
+        while scpi.Dispatch() do
+          Sleep(10)
+      finally
+        scpiLock.Leave
+      end
+    end
+  end
+end { ScpiDispatch } ;
+
+
+(* Main function, return 0 if no error.
+*)
+function RunConsoleApp(portName: string): integer;
+
+var
+  portHandle: TSerialHandle= InvalidSerialHandle;
+  dontStop: boolean= false;
+
+begin
+  actualPortName := portName;
+  result := ParseParams();
+  if result >= 0 then
+    exit;
+  result := 3;                          (* Unresponsive is a good default       *)
+  portHandle := SerOpenLocked(actualPortName);
+  if portHandle = InvalidSerialHandle then begin
+    WriteLn(erroutput, 'Device ' + actualPortName + ' cannot be opened');
+    exit(2)                             (* Cannot be opened                     *)
   end;
+  result := 0;
+  if debugLevel > 0 then
+    WriteLn(ErrOutput, '# Using port ', actualPortName);
+
+(* If requested, start an SCPI server.                                          *)
+
+  if scpiPort >= -1 then
+    result := ScpiStart();
   if result = 0 then
-    result := RunConsoleApp2(portHandle, portName, dontStop);
+    result := RunConsoleApp2(portHandle, actualPortName, dontStop);
   case result of
-    3: WriteLn(stderr, 'No data waiting for sync byte');
-    4: WriteLn(stderr, 'No data reading message');
-    5: WriteLn(stderr, 'Error formatting message')
+    3: WriteLn(erroutput, 'No data waiting for sync byte');
+    4: WriteLn(erroutput, 'No data reading message');
+    5: WriteLn(erroutput, 'Error formatting message')
   otherwise
 
 (* Assume that whatever command we specified on the commandline, defaulting to  *)

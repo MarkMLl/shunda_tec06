@@ -39,10 +39,10 @@ begin
       DoHelp('Tec06');
       Halt(0)
     end;
-  if ParamCount > 0 then
+  if not NoParams() then
     Tec06Port := ParamStr(ParamCount());
 {$ifdef LCL }
-  if ParamCount() > 0 then  (* If GUI is available, activated by no parameter   *)
+  if not NoParams() then    (* If GUI is available, activated by any parameter  *)
 {$endif LCL }
     Halt(RunConsoleApp(Tec06Port));
 

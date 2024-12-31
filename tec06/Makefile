@@ -13,9 +13,9 @@
 FPC=/usr/local/bin/fpc
 FPCFLAGS=-O3 -CX -XX -k--build-id
 DEFINES=-dHAS_SVN -dHAS_FPC_SVN
-INIFILES=../inifiles
-SERIALCOMMS=../serialcomms
-SCPISRV=../scpisrv
+INIFILES=../../inifiles/trunk
+SERIALCOMMS=../../serialcomms/trunk
+SCPISRV=../../scpisrv/trunk
 CPU=$(shell uname -m | sed 's/i686/i386/' | sed 's/armv7l/arm/')
 OPSYS=$(shell uname -o | sed 's/GNU\/Linux/linux/')
 FPCSrcDir=/usr/local/src.fpc/$(shell $(FPC) -iV)/compiler
@@ -48,8 +48,8 @@ $(SCPISRV)/scpiparser.o: any $(SCPISRV)/scpiparser.pas
 $(SCPISRV)/ipaddressutils.o: any $(SCPISRV)/ipaddressutils.pas
 
 $(TARGET): any $(INIFILES)/inifilesabout.pas \
-  $(SERIALCOMMS)/locateports.pas \
-  $(SERIALCOMMS)/netlink.pas $(SCPISRV)/scpiserver.pas $(SCPISRV)/scpiparser.pas \
+  $(SERIALCOMMS)/locateports.pas $(SERIALCOMMS)/netlink.pas \
+  $(SCPISRV)/scpiserver.pas $(SCPISRV)/scpiparser.pas \
   $(SCPISRV)/ipaddressutils.pas consoleapp.pas $_.lpr 
 	$(FPC) $(FPCFLAGS) $(DEFINES) -Fu$(INIFILES) -Fu$(SERIALCOMMS) \
   -Fu$(SCPISRV) -o$(TARGET) $_.lpr 
@@ -62,7 +62,6 @@ test: $(TARGET)
 clean:
 	rm -f *.ppu *.o $_.or project_svnrevision.inc fpc_svnrevision.inc
 	rm -f $(INIFILES)/inifilesabout.o $(INIFILES)/inifilesabout.ppu
-	rm -f $(SERIALCOMMS)/locatecp210xport.o $(SERIALCOMMS)/locatecp210xport.ppu
 	rm -f $(SERIALCOMMS)/netlink.o $(SERIALCOMMS)/netlink.ppu
 	rm -f $(SCPISRV)/scpiserver.o $(SCPISRV)/scpiserver.ppu
 	rm -f $(SCPISRV)/scpiparser.o $(SCPISRV)/scpiparser.ppu
@@ -75,7 +74,7 @@ pubclean: distclean
 	rm -rf backup lib *~
 
 PUBFILES=../$_/* ../common/* $(INIFILES)/inifilesabout.pas \
-  $(SERIALCOMMS)/locateports.pas $(SERIALCOMMS)/locatecp210xport.pas $(SERIALCOMMS)/netlink.pas \
+  $(SERIALCOMMS)/locateports.pas $(SERIALCOMMS)/netlink.pas \
   $(SCPISRV)/scpiserver.pas $(SCPISRV)/scpiparser.pas $(SCPISRV)/ipaddressutils.pas
 
 tar: pubclean

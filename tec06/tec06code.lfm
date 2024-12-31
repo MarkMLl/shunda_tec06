@@ -130,7 +130,7 @@ object Tec06Form: TTec06Form
     AnchorSideBottom.Control = Owner
     AnchorSideBottom.Side = asrBottom
     Left = 495
-    Height = 312
+    Height = 320
     Top = 29
     Width = 208
     Anchors = [akTop, akRight]
@@ -138,7 +138,7 @@ object Tec06Form: TTec06Form
     BorderSpacing.Right = 8
     BorderSpacing.Bottom = 8
     Caption = 'Now'
-    ClientHeight = 292
+    ClientHeight = 300
     ClientWidth = 206
     TabOrder = 2
     object StringGrid1: TStringGrid
@@ -148,7 +148,7 @@ object Tec06Form: TTec06Form
       AnchorSideRight.Side = asrBottom
       AnchorSideBottom.Control = Label1
       Left = 4
-      Height = 253
+      Height = 261
       Top = 4
       Width = 198
       Anchors = [akTop, akLeft, akRight, akBottom]
@@ -214,7 +214,7 @@ object Tec06Form: TTec06Form
       AnchorSideBottom.Side = asrBottom
       Left = 4
       Height = 27
-      Top = 261
+      Top = 269
       Width = 198
       Alignment = taCenter
       Anchors = [akLeft, akRight, akBottom]
@@ -239,14 +239,14 @@ object Tec06Form: TTec06Form
     AnchorSideBottom.Control = Owner
     AnchorSideBottom.Side = asrBottom
     Left = 495
-    Height = 151
-    Top = 349
+    Height = 143
+    Top = 357
     Width = 208
     Anchors = [akTop, akLeft, akRight, akBottom]
     BorderSpacing.Top = 4
     BorderSpacing.Bottom = 4
     Caption = 'Connection'
-    ClientHeight = 131
+    ClientHeight = 123
     ClientWidth = 206
     TabOrder = 3
     object ComboBox1: TComboBox
@@ -295,7 +295,7 @@ object Tec06Form: TTec06Form
       AnchorSideBottom.Side = asrBottom
       Left = 4
       Height = 27
-      Top = 96
+      Top = 88
       Width = 198
       Alignment = taCenter
       Anchors = [akLeft, akRight, akBottom]
@@ -369,5 +369,10 @@ object Tec06Form: TTec06Form
     Left = 566
     object ChartAxisTransformationsRightAutoScaleAxisTransformRight: TAutoScaleAxisTransform
     end
+  end
+  object IdleTimerScpi: TIdleTimer
+    Interval = 100
+    OnTimer = IdleTimerScpiTimer
+    Left = 528
   end
 end
